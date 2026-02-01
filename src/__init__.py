@@ -1,0 +1,1 @@
+# aseguraOpen - Insurance Agents System

@@ -1,0 +1,7 @@
+openai-agents==0.7.0
+python-dotenv==1.0.0
+libsql-client
+sqlalchemy==2.0.23
+pydantic>=2.12.3
+fastapi>=0.104.0
+uvicorn>=0.24.0

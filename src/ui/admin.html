@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>aseguraOpen - Admin Database</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .tab-button {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .tab-button.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-button:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .table-wrapper {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: none;
+        }
+        
+        .table-wrapper.active {
+            display: block;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f5f5f5;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        tr:hover {
+            background: #f9f9f9;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .id-short {
+            font-family: monospace;
+            font-size: 11px;
+            color: #999;
+        }
+        
+        .state-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .state-intake { background: #ffd89b; color: #333; }
+        .state-exploration { background: #a8d8ea; color: #333; }
+        .state-quotation { background: #aa96da; color: white; }
+        .state-acceptance { background: #fcbad3; color: #333; }
+        .state-emission { background: #a1c181; color: white; }
+        .state-finalization { background: #e0e0e0; color: #333; }
+        .state-closed { background: #999; color: white; }
+        
+        .badge-true {
+            background: #4caf50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .badge-false {
+            background: #f44336;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .timestamp {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .nav-bottom {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .nav-bottom a {
+            background: white;
+            padding: 12px 30px;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 600;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+        
+        .nav-bottom a:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+        
+        .refresh-indicator {
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="header">
+            <div>
+                <h1>📊 aseguraOpen - Admin Database</h1>
+                <p>Vista de administración con todos los datos en tiempo real</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-primary" onclick="refreshAll()">🔄 Actualizar Datos</button>
+                <a href="/" style="text-decoration: none;">
+                    <button class="btn-secondary">💬 Ir al Chat</button>
+                </a>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('policies')">📋 Pólizas</button>
+            <button class="tab-button" onclick="switchTab('clients')">👥 Clientes</button>
+            <button class="tab-button" onclick="switchTab('vehicles')">🚗 Vehículos</button>
+            <button class="tab-button" onclick="switchTab('quotations')">💰 Cotizaciones</button>
+            <button class="tab-button" onclick="switchTab('transitions')">➡️ Transiciones</button>
+        </div>
+        
+        <!-- Tabla de Pólizas -->
+        <div id="policies-table" class="table-wrapper active">
+            <div style="padding: 20px; text-align: right;">
+                <span class="refresh-indicator" id="policies-timestamp"></span>
+            </div>
+            <table id="policies-data">
+                <thead>
+                    <tr>
+                        <th>ID Póliza</th>
+                        <th>Estado</th>
+                        <th>Intención</th>
+                        <th>Tipo Seguro</th>
+                        <th>Creada</th>
+                        <th>Actualizada</th>
+                    </tr>
+                </thead>
+                <tbody id="policies-body">
+                    <tr><td colspan="6" class="loading">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Tabla de Clientes -->
+        <div id="clients-table" class="table-wrapper">
+            <div style="padding: 20px; text-align: right;">
+                <span class="refresh-indicator" id="clients-timestamp"></span>
+            </div>
+            <table id="clients-data">
+                <thead>
+                    <tr>
+                        <th>ID Cliente</th>
+                        <th>Póliza</th>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Teléfono</th>
+                        <th>Guardado</th>
+                    </tr>
+                </thead>
+                <tbody id="clients-body">
+                    <tr><td colspan="6" class="loading">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Tabla de Vehículos -->
+        <div id="vehicles-table" class="table-wrapper">
+            <div style="padding: 20px; text-align: right;">
+                <span class="refresh-indicator" id="vehicles-timestamp"></span>
+            </div>
+            <table id="vehicles-data">
+                <thead>
+                    <tr>
+                        <th>ID Vehículo</th>
+                        <th>Póliza</th>
+                        <th>Marca</th>
+                        <th>Modelo</th>
+                        <th>Año</th>
+                        <th>Patente</th>
+                        <th>Nro Motor</th>
+                    </tr>
+                </thead>
+                <tbody id="vehicles-body">
+                    <tr><td colspan="7" class="loading">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Tabla de Cotizaciones -->
+        <div id="quotations-table" class="table-wrapper">
+            <div style="padding: 20px; text-align: right;">
+                <span class="refresh-indicator" id="quotations-timestamp"></span>
+            </div>
+            <table id="quotations-data">
+                <thead>
+                    <tr>
+                        <th>ID Cotización</th>
+                        <th>Póliza</th>
+                        <th>Cobertura</th>
+                        <th>Nivel</th>
+                        <th>Prima Mensual</th>
+                        <th>Prima Anual</th>
+                        <th>Deductible</th>
+                    </tr>
+                </thead>
+                <tbody id="quotations-body">
+                    <tr><td colspan="7" class="loading">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Tabla de Transiciones -->
+        <div id="transitions-table" class="table-wrapper">
+            <div style="padding: 20px; text-align: right;">
+                <span class="refresh-indicator" id="transitions-timestamp"></span>
+            </div>
+            <table id="transitions-data">
+                <thead>
+                    <tr>
+                        <th>ID Transición</th>
+                        <th>Póliza</th>
+                        <th>De</th>
+                        <th>A</th>
+                        <th>Razón</th>
+                        <th>Agente</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody id="transitions-body">
+                    <tr><td colspan="7" class="loading">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="nav-bottom">
+            <a href="/">💬 Volver al Chat</a>
+        </div>
+    </div>
+    
+    <script>
+        function switchTab(tab) {
+            // Hide all tables
+            document.querySelectorAll('.table-wrapper').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Remove active from buttons
+            document.querySelectorAll('.tab-button').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Show selected table
+            document.getElementById(tab + '-table').classList.add('active');
+            
+            // Mark button as active
+            event.target.classList.add('active');
+            
+            // Load data if needed
+            loadData(tab);
+        }
+        
+        async function loadData(tab) {
+            try {
+                let url, tbody, timestampEl;
+                
+                if (tab === 'policies') {
+                    url = '/api/admin/policies';
+                    tbody = document.getElementById('policies-body');
+                    timestampEl = document.getElementById('policies-timestamp');
+                    
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    if (data.policies.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay pólizas</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = data.policies.map(p => `
+                        <tr>
+                            <td><span class="id-short">${p.id.substring(0, 8)}...</span></td>
+                            <td><span class="state-badge state-${p.state}">${p.state}</span></td>
+                            <td><span class="${p.intention ? 'badge-true' : 'badge-false'}">${p.intention ? '✅ SÍ' : '❌ NO'}</span></td>
+                            <td>${p.insurance_type || '—'}</td>
+                            <td><span class="timestamp">${new Date(p.created_at).toLocaleString('es-ES')}</span></td>
+                            <td><span class="timestamp">${new Date(p.updated_at).toLocaleString('es-ES')}</span></td>
+                        </tr>
+                    `).join('');
+                    
+                } else if (tab === 'clients') {
+                    url = '/api/admin/clients';
+                    tbody = document.getElementById('clients-body');
+                    timestampEl = document.getElementById('clients-timestamp');
+                    
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    if (data.clients.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay clientes</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = data.clients.map(c => `
+                        <tr>
+                            <td><span class="id-short">${c.id.substring(0, 8)}...</span></td>
+                            <td><span class="id-short">${c.policy_id.substring(0, 8)}...</span></td>
+                            <td>${c.name || '—'}</td>
+                            <td>${c.email || '—'}</td>
+                            <td>${c.phone || '—'}</td>
+                            <td><span class="timestamp">${new Date(c.created_at).toLocaleString('es-ES')}</span></td>
+                        </tr>
+                    `).join('');
+                    
+                } else if (tab === 'vehicles') {
+                    url = '/api/admin/vehicles';
+                    tbody = document.getElementById('vehicles-body');
+                    timestampEl = document.getElementById('vehicles-timestamp');
+                    
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    if (!data.vehicles || data.vehicles.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay vehículos</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = data.vehicles.map(v => `
+                        <tr>
+                            <td><span class="id-short">${v.id.substring(0, 8)}...</span></td>
+                            <td><span class="id-short">${v.policy_id.substring(0, 8)}...</span></td>
+                            <td>${v.make || '—'}</td>
+                            <td>${v.model || '—'}</td>
+                            <td>${v.year || '—'}</td>
+                            <td><strong>${v.plate || '—'}</strong></td>
+                            <td>${v.engine_number || '—'}</td>
+                        </tr>
+                    `).join('');
+                    
+                } else if (tab === 'quotations') {
+                    url = '/api/admin/quotations';
+                    tbody = document.getElementById('quotations-body');
+                    timestampEl = document.getElementById('quotations-timestamp');
+                    
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    if (!data.quotations || data.quotations.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay cotizaciones</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = data.quotations.map(q => `
+                        <tr>
+                            <td><span class="id-short">${q.id.substring(0, 8)}...</span></td>
+                            <td><span class="id-short">${q.policy_id.substring(0, 8)}...</span></td>
+                            <td>${q.coverage_type || '—'}</td>
+                            <td>${q.coverage_level || '—'}</td>
+                            <td>$${q.monthly_premium?.toFixed(2) || '—'}</td>
+                            <td>$${q.annual_premium?.toFixed(2) || '—'}</td>
+                            <td>$${q.deductible?.toFixed(2) || '—'}</td>
+                        </tr>
+                    `).join('');
+                    
+                    
+                } else if (tab === 'transitions') {
+                    url = '/api/admin/transitions';
+                    tbody = document.getElementById('transitions-body');
+                    timestampEl = document.getElementById('transitions-timestamp');
+                    
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    if (data.transitions.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay transiciones</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = data.transitions.map(t => `
+                        <tr>
+                            <td><span class="id-short">${t.id.substring(0, 8)}...</span></td>
+                            <td><span class="id-short">${t.policy_id.substring(0, 8)}...</span></td>
+                            <td><span class="state-badge state-${t.from_state}">${t.from_state}</span></td>
+                            <td><span class="state-badge state-${t.to_state}">${t.to_state}</span></td>
+                            <td>${t.reason || '—'}</td>
+                            <td>${t.agent || '—'}</td>
+                            <td><span class="timestamp">${new Date(t.created_at).toLocaleString('es-ES')}</span></td>
+                        </tr>
+                    `).join('');
+                }
+                
+                // Update timestamp
+                if (timestampEl) {
+                    timestampEl.textContent = `Actualizado: ${new Date().toLocaleTimeString('es-ES')}`;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        async function refreshAll() {
+            // Refresh all visible data
+            const tabs = ['policies', 'clients', 'vehicles', 'quotations', 'transitions'];
+            for (const tab of tabs) {
+                await loadData(tab);
+            }
+        }
+        
+        // Initial load
+        window.addEventListener('load', () => {
+            loadData('policies');
+        });
+        
+        // Auto-refresh every 5 seconds
+        setInterval(() => {
+            const activeTab = document.querySelector('.table-wrapper.active');
+            if (activeTab.id === 'policies-table') loadData('policies');
+            else if (activeTab.id === 'clients-table') loadData('clients');
+            else if (activeTab.id === 'vehicles-table') loadData('vehicles');
+            else if (activeTab.id === 'quotations-table') loadData('quotations');
+            else if (activeTab.id === 'transitions-table') loadData('transitions');
+        }, 5000);
+    </script>
+</body>
+</html>
