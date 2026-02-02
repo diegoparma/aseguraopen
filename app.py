@@ -40,12 +40,17 @@ async def startup_event():
         print("Starting database initialization...")
         DatabaseConnection.get_connection()
         print("Database connection established")
-        PolicyRepository.seed_quotation_templates()
-        print("Database initialization completed successfully")
+        try:
+            PolicyRepository.seed_quotation_templates()
+            print("Quotation templates seeded")
+        except Exception as e:
+            print(f"Warning: Could not seed templates: {e}")
+        print("Database initialization completed")
     except Exception as e:
         print(f"ERROR during startup: {e}")
         import traceback
         traceback.print_exc()
+        # Don't re-raise - let the app continue to serve requests
 
 class MessageRequest(BaseModel):
     message: str
