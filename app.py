@@ -87,6 +87,8 @@ async def chat_completions(request: ChatCompletionRequest):
             policy = PolicyRepository.create_policy("intake")
             PolicyRepository.create_session(session_id, policy.id)
             policy_id = policy.id
+            # Re-fetch the session after creation
+            session = PolicyRepository.get_session(session_id)
         else:
             policy_id = session["policy_id"]
         
