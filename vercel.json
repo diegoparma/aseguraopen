@@ -1,7 +1,6 @@
 {
   "version": 2,
   "buildCommand": "pip install -r requirements.txt && pip install uvicorn",
-  "runtime": "python3.12",
   "env": {
     "OPENAI_API_KEY": "@OPENAI_API_KEY",
     "TURSO_DATABASE_URL": "@TURSO_DATABASE_URL",
