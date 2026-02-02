@@ -24,18 +24,28 @@ load_dotenv()
 
 app = FastAPI(title="aseguraOpen - Insurance Agents")
 
-# Initialize DB
-DatabaseConnection.get_connection()
-
-# Seed quotation templates on startup (if table exists)
-try:
-    PolicyRepository.seed_quotation_templates()
-except Exception as e:
-    # Table might not exist yet, will be created on first DB init
-    pass
-
 # Get DB query delay from env
 DB_QUERY_DELAY = float(os.getenv("DB_QUERY_DELAY", "0"))
+
+# Health check endpoint (before startup)
+@app.get("/health")
+async def health():
+    """Health check endpoint"""
+    return {"status": "ok"}
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize DB on startup"""
+    try:
+        print("Starting database initialization...")
+        DatabaseConnection.get_connection()
+        print("Database connection established")
+        PolicyRepository.seed_quotation_templates()
+        print("Database initialization completed successfully")
+    except Exception as e:
+        print(f"ERROR during startup: {e}")
+        import traceback
+        traceback.print_exc()
 
 class MessageRequest(BaseModel):
     message: str
