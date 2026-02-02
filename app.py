@@ -221,6 +221,34 @@ async def startup_event():
         print("Starting database initialization...")
         DatabaseConnection.get_connection()
         print("Database connection established")
+        
+        # Create payments table if it doesn't exist
+        try:
+            print("Creating payments table if not exists...")
+            create_payments_table = """
+            CREATE TABLE IF NOT EXISTS payments (
+              id TEXT PRIMARY KEY,
+              policy_id TEXT NOT NULL REFERENCES policies(id),
+              quotation_id TEXT REFERENCES quotation_data(id),
+              amount DECIMAL,
+              preference_id TEXT,
+              payment_link TEXT,
+              payment_status TEXT DEFAULT 'pending',
+              payment_id TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+            DatabaseConnection.execute_update(create_payments_table)
+            
+            # Create indexes
+            DatabaseConnection.execute_update("CREATE INDEX IF NOT EXISTS idx_payments_policy_id ON payments(policy_id)")
+            DatabaseConnection.execute_update("CREATE INDEX IF NOT EXISTS idx_payments_preference_id ON payments(preference_id)")
+            DatabaseConnection.execute_update("CREATE INDEX IF NOT EXISTS idx_payments_payment_id ON payments(payment_id)")
+            print("Payments table created/verified")
+        except Exception as e:
+            print(f"Warning: Could not create payments table: {e}")
+        
         try:
             PolicyRepository.seed_quotation_templates()
             print("Quotation templates seeded")
