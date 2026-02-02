@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from typing import List, Optional
 
 from src.db.repository import PolicyRepository
 from src.db.connection import DatabaseConnection
@@ -32,6 +33,124 @@ DB_QUERY_DELAY = float(os.getenv("DB_QUERY_DELAY", "0"))
 async def health():
     """Health check endpoint"""
     return {"status": "ok"}
+
+# ========== OpenAI Chat Completions API Compatible Endpoints ==========
+
+class Message(BaseModel):
+    """Chat message compatible with OpenAI Chat Completions format"""
+    role: str  # "user", "assistant", "system", "developer"
+    content: str
+
+class ChatCompletionRequest(BaseModel):
+    """Request model compatible with OpenAI Chat Completions API"""
+    messages: List[Message]
+    model: str = "aseguraopen"
+    temperature: Optional[float] = 1.0
+    max_tokens: Optional[int] = None
+    stream: Optional[bool] = False
+    session_id: Optional[str] = None  # Custom field for tracking
+
+class ChatCompletionChoice(BaseModel):
+    """Choice object in chat completion response"""
+    index: int
+    message: Message
+    finish_reason: str = "stop"
+
+class ChatCompletionUsage(BaseModel):
+    """Token usage info"""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+class ChatCompletionResponse(BaseModel):
+    """Response compatible with OpenAI Chat Completions API"""
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: List[ChatCompletionChoice]
+    usage: ChatCompletionUsage
+
+@app.post("/v1/chat/completions")
+async def chat_completions(request: ChatCompletionRequest):
+    """
+    OpenAI Chat Completions API compatible endpoint.
+    Compatible with OpenAI client libraries and tools.
+    """
+    try:
+        # Get or create session
+        session_id = request.session_id or str(uuid.uuid4())
+        session = PolicyRepository.get_session(session_id)
+        
+        if not session:
+            # Create new policy and session
+            policy = PolicyRepository.create_policy("intake")
+            PolicyRepository.create_session(session_id, policy.id)
+            policy_id = policy.id
+        else:
+            policy_id = session["policy_id"]
+        
+        # Get the last user message
+        user_message = next(
+            (m.content for m in reversed(request.messages) if m.role == "user"),
+            None
+        )
+        
+        if not user_message:
+            raise HTTPException(status_code=400, detail="No user message provided")
+        
+        # Process through insurance agents based on policy state
+        policy = PolicyRepository.get_policy(policy_id)
+        
+        # Route to appropriate agent based on state
+        if policy.state == "intake":
+            agent = IntakeAgent()
+        elif policy.state == "quotation":
+            agent = QuotationAgent()
+        elif policy.state == "payment":
+            agent = PaymentAgent()
+        elif policy.state == "issuance":
+            agent = IssuanceAgent()
+        else:
+            agent = IntakeAgent()
+        
+        # Get response from agent
+        response_text = await agent.process_message(user_message, policy_id)
+        
+        # Add delay if configured
+        if DB_QUERY_DELAY > 0:
+            await asyncio.sleep(DB_QUERY_DELAY)
+        
+        # Build response in OpenAI format
+        completion_id = f"chatcmpl-{uuid.uuid4().hex[:16]}"
+        
+        return ChatCompletionResponse(
+            id=completion_id,
+            created=int(time.time()),
+            model=request.model,
+            choices=[
+                ChatCompletionChoice(
+                    index=0,
+                    message=Message(
+                        role="assistant",
+                        content=response_text
+                    ),
+                    finish_reason="stop"
+                )
+            ],
+            usage=ChatCompletionUsage(
+                prompt_tokens=len(user_message.split()),
+                completion_tokens=len(response_text.split()),
+                total_tokens=len(user_message.split()) + len(response_text.split())
+            )
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat/completions")
+async def chat_completions_legacy(request: ChatCompletionRequest):
+    """Legacy endpoint without /v1 prefix for compatibility"""
+    return await chat_completions(request)
 
 @app.on_event("startup")
 async def startup_event():
