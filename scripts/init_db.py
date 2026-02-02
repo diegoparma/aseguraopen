@@ -98,6 +98,20 @@ CREATE TABLE IF NOT EXISTS sessions (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Payments (Mercado Pago integration)
+CREATE TABLE IF NOT EXISTS payments (
+  id TEXT PRIMARY KEY,
+  policy_id TEXT NOT NULL REFERENCES policies(id),
+  quotation_id TEXT REFERENCES quotation_data(id),
+  amount DECIMAL,
+  preference_id TEXT,  -- Mercado Pago preference ID
+  payment_link TEXT,  -- Link de pago (init_point)
+  payment_status TEXT DEFAULT 'pending',  -- pending, approved, rejected, cancelled
+  payment_id TEXT,  -- Mercado Pago payment ID (después del pago)
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Índices para mejorar queries
 CREATE INDEX IF NOT EXISTS idx_policies_state ON policies(state);
 CREATE INDEX IF NOT EXISTS idx_client_data_policy ON client_data(policy_id);
@@ -105,6 +119,9 @@ CREATE INDEX IF NOT EXISTS idx_exploration_data_policy ON exploration_data(polic
 CREATE INDEX IF NOT EXISTS idx_quotation_data_policy ON quotation_data(policy_id);
 CREATE INDEX IF NOT EXISTS idx_state_transitions_policy ON state_transitions(policy_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_policy_id ON sessions(policy_id);
+CREATE INDEX IF NOT EXISTS idx_payments_policy_id ON payments(policy_id);
+CREATE INDEX IF NOT EXISTS idx_payments_preference_id ON payments(preference_id);
+CREATE INDEX IF NOT EXISTS idx_payments_payment_id ON payments(payment_id);
 """
 
 def init_db(db_path: str = "aseguraopen.db"):

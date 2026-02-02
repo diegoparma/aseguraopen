@@ -88,3 +88,17 @@ class StateTransition:
     reason: str
     agent: str
     created_at: Optional[datetime] = None
+
+@dataclass
+class PaymentData:
+    """Payment information and Mercado Pago preference"""
+    id: str
+    policy_id: str
+    quotation_id: Optional[str] = None
+    amount: Optional[float] = None
+    preference_id: Optional[str] = None  # Mercado Pago preference ID
+    payment_link: Optional[str] = None  # Link de pago (init_point)
+    payment_status: Optional[str] = None  # pending, approved, rejected, cancelled
+    payment_id: Optional[str] = None  # Mercado Pago payment ID (después del pago)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

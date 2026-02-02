@@ -4,7 +4,7 @@ Database repository for policies and related data
 import uuid
 from datetime import datetime
 from src.db.connection import DatabaseConnection
-from src.models import Policy, ClientData, ExplorationData, VehicleData, QuotationData, QuotationTemplate, StateTransition
+from src.models import Policy, ClientData, ExplorationData, VehicleData, QuotationData, QuotationTemplate, StateTransition, PaymentData
 
 class PolicyRepository:
     """Manage policy data in database"""
@@ -672,3 +672,113 @@ class PolicyRepository:
                 })
         
         return sessions
+    
+    # ============== Payment Methods ==============
+    
+    @classmethod
+    def create_payment(cls, policy_id: str, quotation_id: str, amount: float, 
+                      preference_id: str, payment_link: str) -> PaymentData:
+        """Create a payment record with Mercado Pago preference"""
+        payment_id = str(uuid.uuid4())
+        now = datetime.now().isoformat()
+        
+        query = """
+            INSERT INTO payments (id, policy_id, quotation_id, amount, preference_id, 
+                                 payment_link, payment_status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+        """
+        
+        cls.db.execute_update(query, (payment_id, policy_id, quotation_id, amount, 
+                                     preference_id, payment_link, now, now))
+        
+        return PaymentData(
+            id=payment_id,
+            policy_id=policy_id,
+            quotation_id=quotation_id,
+            amount=amount,
+            preference_id=preference_id,
+            payment_link=payment_link,
+            payment_status="pending",
+            created_at=now,
+            updated_at=now
+        )
+    
+    @classmethod
+    def get_payment_by_policy(cls, policy_id: str) -> PaymentData:
+        """Get payment by policy ID"""
+        query = """
+            SELECT id, policy_id, quotation_id, amount, preference_id, payment_link,
+                   payment_status, payment_id, created_at, updated_at
+            FROM payments 
+            WHERE policy_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        """
+        result = cls.db.execute_query(query, (policy_id,))
+        
+        if result:
+            row = result[0]
+            return PaymentData(
+                id=row[0],
+                policy_id=row[1],
+                quotation_id=row[2],
+                amount=row[3],
+                preference_id=row[4],
+                payment_link=row[5],
+                payment_status=row[6],
+                payment_id=row[7],
+                created_at=row[8],
+                updated_at=row[9]
+            )
+        return None
+    
+    @classmethod
+    def update_payment_status(cls, preference_id: str, payment_status: str, payment_id: str = None):
+        """Update payment status after webhook notification"""
+        now = datetime.now().isoformat()
+        
+        if payment_id:
+            query = """
+                UPDATE payments 
+                SET payment_status = ?, payment_id = ?, updated_at = ?
+                WHERE preference_id = ?
+            """
+            cls.db.execute_update(query, (payment_status, payment_id, now, preference_id))
+        else:
+            query = """
+                UPDATE payments 
+                SET payment_status = ?, updated_at = ?
+                WHERE preference_id = ?
+            """
+            cls.db.execute_update(query, (payment_status, now, preference_id))
+        
+        return True
+    
+    @classmethod
+    def get_all_payments(cls):
+        """Get all payments for admin view"""
+        query = """
+            SELECT id, policy_id, quotation_id, amount, preference_id, payment_link,
+                   payment_status, payment_id, created_at, updated_at
+            FROM payments
+            ORDER BY created_at DESC
+        """
+        results = cls.db.execute_query(query)
+        
+        payments = []
+        if results:
+            for row in results:
+                payments.append({
+                    "id": row[0],
+                    "policy_id": row[1],
+                    "quotation_id": row[2],
+                    "amount": row[3],
+                    "preference_id": row[4],
+                    "payment_link": row[5],
+                    "payment_status": row[6],
+                    "payment_id": row[7],
+                    "created_at": row[8],
+                    "updated_at": row[9]
+                })
+        
+        return payments

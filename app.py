@@ -557,6 +557,87 @@ def get_all_sessions():
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/admin/payments")
+def get_all_payments():
+    """Get all payments for admin view"""
+    try:
+        payments = PolicyRepository.get_all_payments()
+        return {"payments": jsonable_encoder(payments)}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+class MercadoPagoWebhook(BaseModel):
+    """Mercado Pago webhook notification"""
+    id: Optional[int] = None
+    live_mode: Optional[bool] = None
+    type: Optional[str] = None
+    date_created: Optional[str] = None
+    application_id: Optional[int] = None
+    user_id: Optional[int] = None
+    version: Optional[int] = None
+    api_version: Optional[str] = None
+    action: Optional[str] = None
+    data: Optional[dict] = None
+
+@app.post("/webhooks/mercadopago")
+async def mercadopago_webhook(webhook: MercadoPagoWebhook):
+    """Handle Mercado Pago payment notifications"""
+    try:
+        # Log webhook for debugging
+        print(f"📩 Mercado Pago Webhook: {webhook.type} - {webhook.action}")
+        
+        # Only process payment notifications
+        if webhook.type == "payment":
+            payment_id = webhook.data.get("id")
+            
+            # Get payment details from Mercado Pago
+            import mercadopago
+            access_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
+            if not access_token:
+                print("❌ Mercado Pago access token not configured")
+                return {"status": "error", "message": "Access token not configured"}
+            
+            sdk = mercadopago.SDK(access_token)
+            payment_info = sdk.payment().get(payment_id)
+            
+            if payment_info["status"] == 200:
+                payment_data = payment_info["response"]
+                status = payment_data.get("status")  # approved, rejected, pending
+                preference_id = payment_data.get("external_reference") or payment_data.get("metadata", {}).get("preference_id")
+                
+                # Update payment status in database
+                if preference_id:
+                    PolicyRepository.update_payment_status(
+                        preference_id=preference_id,
+                        payment_status=status,
+                        payment_id=str(payment_id)
+                    )
+                    
+                    print(f"✅ Payment {payment_id} status updated to: {status}")
+                    
+                    # If approved, update policy state to issued
+                    if status == "approved":
+                        # Get policy_id from payment
+                        payment_record = PolicyRepository.get_payment_by_policy(payment_data.get("external_reference"))
+                        if payment_record:
+                            PolicyRepository.update_policy_state(
+                                policy_id=payment_record.policy_id,
+                                new_state="issued",
+                                reason="Pago aprobado por Mercado Pago",
+                                agent="MercadoPagoWebhook"
+                            )
+                            print(f"✅ Policy {payment_record.policy_id} state updated to issued")
+            
+        return {"status": "ok"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"❌ Webhook error: {e}")
+        # Don't raise exception - return 200 to avoid webhook retries
+        return {"status": "error", "message": str(e)}
+
 @app.get("/admin")
 def serve_admin_ui():
     """Serve admin database UI"""
