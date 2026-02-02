@@ -99,23 +99,81 @@ async def chat_completions(request: ChatCompletionRequest):
         if not user_message:
             raise HTTPException(status_code=400, detail="No user message provided")
         
-        # Process through insurance agents based on policy state
+        # Add delay if configured
+        if DB_QUERY_DELAY > 0:
+            await asyncio.sleep(DB_QUERY_DELAY)
+        
+        # Get current policy state
         policy = PolicyRepository.get_policy(policy_id)
+        client_data = PolicyRepository.get_client_data(policy_id)
+        vehicle_data = PolicyRepository.get_vehicle_data(policy_id)
         
-        # Route to appropriate agent based on state
-        if policy.state == "intake":
-            agent = IntakeAgent()
-        elif policy.state == "quotation":
-            agent = QuotationAgent()
-        elif policy.state == "payment":
-            agent = PaymentAgent()
-        elif policy.state == "issuance":
-            agent = IssuanceAgent()
+        # Determine which agent to use based on policy state
+        current_state = policy.state
+        agent = None
+        
+        if current_state == "intake":
+            agent = IntakeAgent.create_agent()
+        elif current_state == "loaded":
+            agent = QuotationAgent.create_agent()
+        elif current_state == "quotation":
+            agent = QuotationAgent.create_agent()
+        elif current_state == "payment":
+            agent = PaymentAgent.create_agent()
+        elif current_state == "issued":
+            agent = IssuanceAgent.create_agent()
+        elif current_state == "completed":
+            response_text = "✅ ¡Tu póliza ya está completada! Si necesitas hacer cambios, contáctanos."
         else:
-            agent = IntakeAgent()
+            agent = IntakeAgent.create_agent()
         
-        # Get response from agent
-        response_text = await agent.process_message(user_message, policy_id)
+        # Build conversation history for context
+        session_messages = session.get("messages", [])
+        conversation_history = "\n".join([
+            f"{msg['role'].upper()}: {msg['content']}" 
+            for msg in session_messages
+        ])
+        
+        # Build system context based on current state
+        system_context = f"""CONTEXTO ACTUAL DE LA PÓLIZA:
+- Policy ID: {policy_id}
+- Estado: {policy.state}
+- Tipo de Seguro: {policy.insurance_type or "No especificado"}
+- Cliente: {client_data.name if client_data else "No completado"}
+- Email: {client_data.email if client_data else "N/A"}
+- Teléfono: {client_data.phone if client_data else "N/A"}
+- Vehículo: {f"{vehicle_data.make} {vehicle_data.model}" if vehicle_data else "No ingresado"}
+
+HISTORIAL DE CONVERSACIÓN:
+{conversation_history if conversation_history else 'No hay mensajes previos'}
+
+NUEVO MENSAJE DEL CLIENTE:
+{user_message}"""
+        
+        # Add user message to session
+        messages = session.get("messages", [])
+        messages.append({
+            "role": "user",
+            "content": user_message
+        })
+        PolicyRepository.update_session_messages(session_id, messages)
+        
+        # Add delay if configured
+        if DB_QUERY_DELAY > 0:
+            await asyncio.sleep(DB_QUERY_DELAY)
+        
+        # Run the appropriate agent based on state
+        if agent is not None:
+            result = await Runner.run(agent, system_context)
+            response_text = str(result.final_output)
+        # else response_text already set for completed state
+        
+        # Add agent response to session
+        messages.append({
+            "role": "assistant",
+            "content": response_text
+        })
+        PolicyRepository.update_session_messages(session_id, messages)
         
         # Add delay if configured
         if DB_QUERY_DELAY > 0:
@@ -145,6 +203,8 @@ async def chat_completions(request: ChatCompletionRequest):
             )
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/chat/completions")
