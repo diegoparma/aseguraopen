@@ -1,4 +1,4 @@
 {
   "version": 2,
-  "buildCommand": "pip install -r requirements.txt && pip install uvicorn"
+  "buildCommand": "uv pip install -r requirements.txt && uv pip install uvicorn"
 }
