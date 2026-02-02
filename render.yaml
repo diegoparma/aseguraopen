@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: aseguraopen
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.index:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12
+      - key: PORT
+        value: 8000
+      - key: OPENAI_API_KEY
+        scope: project
+      - key: TURSO_DATABASE_URL
+        scope: project
+      - key: TURSO_AUTH_TOKEN
+        scope: project
+      - key: ENVIRONMENT
+        value: production
+      - key: DB_QUERY_DELAY
+        value: "0.1"
